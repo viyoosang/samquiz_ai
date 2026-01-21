@@ -101,8 +101,8 @@ export function getChatbotHTML() {
                 <button class="sqai-type-btn" data-type="choice">+선택</button>
                 <button class="sqai-type-btn" data-type="short">+단답</button>
                 <button class="sqai-type-btn" data-type="essay">+서술</button>
-                <button class="sqai-type-btn" data-type="order">+순서</button>
-                <button class="sqai-type-btn" data-type="initial">+초성</button>
+                <button class="sqai-type-btn" data-type="order">+순서완성</button>
+                <button class="sqai-type-btn" data-type="initial">+초성퀴즈</button>
               </div>
             </div>
 

@@ -32,7 +32,7 @@
  * 4. 화면 우측 하단에 챗봇 아이콘 클릭
  * 5. 설정(톱니바퀴) 클릭 후 API 키 입력
  *
- * 빌드 정보: 2026-01-21T06:19:36.453Z
+ * 빌드 정보: 2026-01-21T06:46:25.571Z
  */
 
 (function() {
@@ -2071,8 +2071,8 @@ function getChatbotHTML() {
                 <button class="sqai-type-btn" data-type="choice">+선택</button>
                 <button class="sqai-type-btn" data-type="short">+단답</button>
                 <button class="sqai-type-btn" data-type="essay">+서술</button>
-                <button class="sqai-type-btn" data-type="order">+순서</button>
-                <button class="sqai-type-btn" data-type="initial">+초성</button>
+                <button class="sqai-type-btn" data-type="order">+순서완성</button>
+                <button class="sqai-type-btn" data-type="initial">+초성퀴즈</button>
               </div>
             </div>
 
