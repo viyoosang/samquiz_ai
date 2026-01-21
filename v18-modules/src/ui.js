@@ -43,7 +43,7 @@ import {
 } from './templates.js';
 import { injectStyles } from './styles.js';
 import { callGeminiAPI, callGeminiAPIForLetterReorder, callGeminiAPIForCrossword } from './api.js';
-import { fileToBase64, getMimeType, arrayToText, textToArray, wait } from './utils.js';
+import { fileToBase64, getMimeType, arrayToText, textToArray, wait, escapeHtml, isAllowedFileType, getAllowedFileTypesMessage } from './utils.js';
 import { formFillers, clickSaveButton, clickAddQuizButton, isCurrentFormEmpty, applyLetterReorderToForm, applyCrosswordToForm } from './form.js';
 
 // === 드래그 변수 ===
@@ -853,13 +853,9 @@ function setupFileDragAndDrop() {
 
 // === 드롭된 파일 처리 ===
 async function processDroppedFile(file) {
-  // 허용된 파일 형식 확인
-  const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-  const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
-  const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-
-  if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
-    addMessage('PDF 또는 이미지 파일만 업로드 가능합니다.', false, false, 'error');
+  // 허용된 파일 형식 확인 (utils.js의 공통 함수 사용)
+  if (!isAllowedFileType(file)) {
+    addMessage(getAllowedFileTypesMessage(), false, false, 'error');
     return;
   }
 
@@ -897,6 +893,13 @@ async function processDroppedFile(file) {
 async function handleFileUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
+
+  // 파일 타입 검증
+  if (!isAllowedFileType(file)) {
+    addMessage(getAllowedFileTypesMessage(), false, false, 'error');
+    e.target.value = ''; // 입력 초기화
+    return;
+  }
 
   const maxSize = 50 * 1024 * 1024;
   if (file.size > maxSize) {
@@ -1289,7 +1292,7 @@ async function handleRegenerate(index) {
 
   const type = question._type;
   const topic = state.currentTopic || '이전 주제';
-  const level = document.querySelector('#level-segment .sqai-seg-btn.active').dataset.value;
+  const level = document.querySelector('#level-segment .sqai-seg-btn.active')?.dataset?.value || 'elementary';
 
   // 버튼 로딩 상태 - v13: 현재 미리보기 컨테이너 내에서만 찾기
   const previewItem = document.querySelector(`#${currentPreviewId} .sqai-preview-item[data-index="${index}"]`);
@@ -1364,7 +1367,7 @@ function updateQuestionPreviewItem(index) {
 
   let contentHTML = `
     <div class="sqai-preview-item-header">
-      <div class="sqai-preview-title">${index + 1}. ${typeLabel}${q.question.substring(0, 55)}${q.question.length > 55 ? '...' : ''}</div>
+      <div class="sqai-preview-title">${index + 1}. ${typeLabel}${escapeHtml(q.question.substring(0, 55))}${q.question.length > 55 ? '...' : ''}</div>
       <div class="sqai-preview-actions">
         <button class="sqai-preview-action-btn regen" data-index="${index}" title="이 문항 재생성">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1386,26 +1389,26 @@ function updateQuestionPreviewItem(index) {
       const isCorrect = idx === q.answer;
       contentHTML += `<div class="sqai-preview-option ${isCorrect ? 'correct' : ''}">
         ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-        <span>${idx + 1}) ${opt}</span>
+        <span>${idx + 1}) ${escapeHtml(opt)}</span>
       </div>`;
     });
   } else if (qType === 'ox' || qType === 'short' || qType === 'initial') {
     contentHTML += `<div class="sqai-preview-option correct">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-      <span>정답: ${q.answer}</span>
+      <span>정답: ${escapeHtml(String(q.answer))}</span>
     </div>`;
     if (q.similarAnswers && q.similarAnswers.length > 0) {
       contentHTML += `<div class="sqai-preview-option">
-        <span>유사정답: ${q.similarAnswers.join(', ')}</span>
+        <span>유사정답: ${escapeHtml(q.similarAnswers.join(', '))}</span>
       </div>`;
     }
   } else if (qType === 'order' && q.items) {
     contentHTML += `<div class="sqai-preview-option correct">
-      <span>순서: ${q.correctOrder.map(idx => q.items[idx]).join(' → ')}</span>
+      <span>순서: ${escapeHtml(q.correctOrder.map(idx => q.items[idx]).join(' → '))}</span>
     </div>`;
   } else if (qType === 'essay') {
     contentHTML += `<div class="sqai-preview-option">
-      <span>모범답안: ${(q.modelAnswer || '').substring(0, 50)}${(q.modelAnswer || '').length > 50 ? '...' : ''}</span>
+      <span>모범답안: ${escapeHtml((q.modelAnswer || '').substring(0, 50))}${(q.modelAnswer || '').length > 50 ? '...' : ''}</span>
     </div>`;
   }
 
@@ -1441,7 +1444,7 @@ async function handleGenerate() {
 
   // 기존 standard 모드 로직
   const topic = document.getElementById('topic-input').value.trim();
-  const level = document.querySelector('#level-segment .sqai-seg-btn.active').dataset.value;
+  const level = document.querySelector('#level-segment .sqai-seg-btn.active')?.dataset?.value || 'elementary';
 
   // 시퀀스 가져오기
   const sequence = getSequence();
@@ -1527,7 +1530,7 @@ async function handleGenerate() {
 // === v15: 글자순서바꾸기 생성 ===
 async function handleLetterReorderGenerate() {
   const topic = document.getElementById('topic-input').value.trim();
-  const level = document.querySelector('#level-segment .sqai-seg-btn.active').dataset.value;
+  const level = document.querySelector('#level-segment .sqai-seg-btn.active')?.dataset?.value || 'elementary';
   const countBtn = document.querySelector('.sqai-count-btn.active');
   const wordCount = countBtn ? parseInt(countBtn.dataset.count) : LETTER_REORDER_CONFIG.defaultWords;
 
@@ -1612,7 +1615,7 @@ function showLetterReorderPreview(words) {
 
 // === v15: 개별 단어 재생성 ===
 async function handleLetterReorderRegenerate(index) {
-  const level = document.querySelector('#level-segment .sqai-seg-btn.active').dataset.value;
+  const level = document.querySelector('#level-segment .sqai-seg-btn.active')?.dataset?.value || 'elementary';
 
   const loadingMsg = showLoading('단어 재생성 중...');
 
@@ -1717,7 +1720,7 @@ async function applyLetterReorderWords() {
 // === v16: 가로세로퍼즐 생성 ===
 async function handleCrosswordGenerate() {
   const topic = document.getElementById('topic-input').value.trim();
-  const level = document.querySelector('#level-segment .sqai-seg-btn.active').dataset.value;
+  const level = document.querySelector('#level-segment .sqai-seg-btn.active')?.dataset?.value || 'elementary';
   const countBtn = document.querySelector('.sqai-count-btn.active');
   const wordCount = countBtn ? parseInt(countBtn.dataset.count) : CROSSWORD_CONFIG.defaultWords;
 
@@ -1856,7 +1859,7 @@ function showQuestionsPreview(questions, type) {
     // v13: 액션 버튼이 있는 헤더 구조
     previewHTML += `<div class="sqai-preview-item" data-index="${i}">
       <div class="sqai-preview-item-header">
-        <div class="sqai-preview-title">${i + 1}. ${typeLabel}${q.question.substring(0, 55)}${q.question.length > 55 ? '...' : ''}</div>
+        <div class="sqai-preview-title">${i + 1}. ${typeLabel}${escapeHtml(q.question.substring(0, 55))}${q.question.length > 55 ? '...' : ''}</div>
         <div class="sqai-preview-actions">
           <button class="sqai-preview-action-btn regen" data-index="${i}" title="이 문항 재생성">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1878,26 +1881,26 @@ function showQuestionsPreview(questions, type) {
         const isCorrect = idx === q.answer;
         previewHTML += `<div class="sqai-preview-option ${isCorrect ? 'correct' : ''}">
           ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-          <span>${idx + 1}) ${opt}</span>
+          <span>${idx + 1}) ${escapeHtml(opt)}</span>
         </div>`;
       });
     } else if (qType === 'ox' || qType === 'short' || qType === 'initial') {
       previewHTML += `<div class="sqai-preview-option correct">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        <span>정답: ${q.answer}</span>
+        <span>정답: ${escapeHtml(String(q.answer))}</span>
       </div>`;
       if (q.similarAnswers && q.similarAnswers.length > 0) {
         previewHTML += `<div class="sqai-preview-option">
-          <span>유사정답: ${q.similarAnswers.join(', ')}</span>
+          <span>유사정답: ${escapeHtml(q.similarAnswers.join(', '))}</span>
         </div>`;
       }
     } else if (qType === 'order' && q.items) {
       previewHTML += `<div class="sqai-preview-option correct">
-        <span>순서: ${q.correctOrder.map(idx => q.items[idx]).join(' → ')}</span>
+        <span>순서: ${escapeHtml(q.correctOrder.map(idx => q.items[idx]).join(' → '))}</span>
       </div>`;
     } else if (qType === 'essay') {
       previewHTML += `<div class="sqai-preview-option">
-        <span>모범답안: ${(q.modelAnswer || '').substring(0, 50)}${(q.modelAnswer || '').length > 50 ? '...' : ''}</span>
+        <span>모범답안: ${escapeHtml((q.modelAnswer || '').substring(0, 50))}${(q.modelAnswer || '').length > 50 ? '...' : ''}</span>
       </div>`;
     }
 

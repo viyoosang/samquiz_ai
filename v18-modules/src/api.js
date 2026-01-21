@@ -74,7 +74,14 @@ export async function callGeminiAPI(options) {
   }
 
   const data = await response.json();
-  const generatedText = data.candidates[0].content.parts[0].text;
+
+  // 응답 구조 안전 체크
+  const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!generatedText) {
+    const errorMsg = data?.error?.message || '응답을 받지 못했습니다. 다시 시도해주세요.';
+    throw new Error(errorMsg);
+  }
+
   const jsonMatch = generatedText.match(/```json\n([\s\S]*?)\n```/) || generatedText.match(/\{[\s\S]*\}/);
 
   if (jsonMatch) {
@@ -737,7 +744,14 @@ export async function callGeminiAPIForLetterReorder(options) {
   }
 
   const data = await response.json();
-  const generatedText = data.candidates[0].content.parts[0].text;
+
+  // 응답 구조 안전 체크
+  const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!generatedText) {
+    const errorMsg = data?.error?.message || '응답을 받지 못했습니다. 다시 시도해주세요.';
+    throw new Error(errorMsg);
+  }
+
   const jsonMatch = generatedText.match(/```json\n([\s\S]*?)\n```/) || generatedText.match(/\{[\s\S]*\}/);
 
   if (jsonMatch) {
@@ -1185,10 +1199,15 @@ export async function callGeminiAPIForCrossword(options) {
 
   const data = await response.json();
 
-  // Gemini thinking mode: 여러 parts 중 text가 있는 것을 찾음
-  const responseParts = data.candidates[0].content.parts || [];
-  let generatedText = '';
+  // 응답 구조 안전 체크
+  const responseParts = data?.candidates?.[0]?.content?.parts;
+  if (!responseParts || responseParts.length === 0) {
+    const errorMsg = data?.error?.message || '응답을 받지 못했습니다. 다시 시도해주세요.';
+    throw new Error(errorMsg);
+  }
 
+  // Gemini thinking mode: 여러 parts 중 text가 있는 것을 찾음
+  let generatedText = '';
   for (const part of responseParts) {
     if (part.text) {
       generatedText = part.text;

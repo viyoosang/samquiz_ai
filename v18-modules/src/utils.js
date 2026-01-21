@@ -57,3 +57,28 @@ export function textToArray(text, separator = ',') {
   }
   return text.split(separator).map(s => s.trim()).filter(s => s);
 }
+
+// === HTML 이스케이프 (XSS 방지) ===
+export function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// === 허용된 파일 타입 검증 ===
+const ALLOWED_FILE_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+
+export function isAllowedFileType(file) {
+  // MIME 타입 체크
+  if (ALLOWED_FILE_TYPES.includes(file.type)) return true;
+
+  // 확장자 체크 (MIME 타입이 없거나 잘못된 경우 대비)
+  const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+  return ALLOWED_EXTENSIONS.includes(ext);
+}
+
+export function getAllowedFileTypesMessage() {
+  return 'PDF 또는 이미지(PNG, JPG, GIF, WebP)만 업로드 가능합니다.';
+}
