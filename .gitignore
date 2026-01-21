@@ -1,0 +1,55 @@
+# 이전 버전 모듈 폴더
+v8-modules/
+v9-modules/
+v10-modules/
+v11-modules/
+v12-modules/
+v13-modules/
+v14-modules/
+v15-modules/
+v16-modules/
+v17-modules/
+
+# 이전 버전 단일 파일
+samquiz-ai-chatbot-fixed.js
+samquiz-ai-chatbot-gemini3.js
+samquiz-ai-chatbot-v2.js
+samquiz-ai-chatbot-v3.js
+samquiz-ai-chatbot-v4.js
+samquiz-ai-chatbot-v5.js
+samquiz-ai-chatbot-v6.js
+samquiz-ai-chatbot-v7.js
+
+# 샘플/테스트 데이터
+사회(완)/
+유형별 HTML/
+
+# 내부 문서
+요청서/
+CLAUDE.md
+
+# 도구 (별도 관리)
+tools/
+
+# 압축 파일
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# Misc
+nul
