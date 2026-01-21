@@ -8,7 +8,7 @@
  */
 
 import { GEMINI_API_URL, LETTER_REORDER_CONFIG, CROSSWORD_CONFIG } from './config.js';
-import { state, settings, getApiKey } from './state.js';
+import { state, settings, getApiKey, createAbortController } from './state.js';
 
 // === Gemini API 호출 ===
 export async function callGeminiAPI(options) {
@@ -36,20 +36,32 @@ export async function callGeminiAPI(options) {
     });
   }
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 1.0,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 8192,
-        thinkingConfig: { thinkingLevel: "medium" }
-      }
-    })
-  });
+  // v19: AbortController 추가
+  const signal = createAbortController();
+
+  let response;
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 1.0,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+          thinkingConfig: { thinkingLevel: "medium" }
+        }
+      }),
+      signal
+    });
+  } catch (fetchError) {
+    if (fetchError.name === 'AbortError') {
+      throw new Error('CANCELLED');
+    }
+    throw fetchError;
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -709,20 +721,32 @@ export async function callGeminiAPIForLetterReorder(options) {
     });
   }
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 1.0,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 8192,
-        thinkingConfig: { thinkingLevel: "medium" }
-      }
-    })
-  });
+  // v19: AbortController 추가
+  const signal = createAbortController();
+
+  let response;
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 1.0,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+          thinkingConfig: { thinkingLevel: "medium" }
+        }
+      }),
+      signal
+    });
+  } catch (fetchError) {
+    if (fetchError.name === 'AbortError') {
+      throw new Error('CANCELLED');
+    }
+    throw fetchError;
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -1163,20 +1187,32 @@ export async function callGeminiAPIForCrossword(options) {
     });
   }
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 1.0,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 8192,
-        thinkingConfig: { thinkingLevel: "medium" }
-      }
-    })
-  });
+  // v19: AbortController 추가
+  const signal = createAbortController();
+
+  let response;
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 1.0,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+          thinkingConfig: { thinkingLevel: "medium" }
+        }
+      }),
+      signal
+    });
+  } catch (fetchError) {
+    if (fetchError.name === 'AbortError') {
+      throw new Error('CANCELLED');
+    }
+    throw fetchError;
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

@@ -24,8 +24,33 @@ export const state = {
   conversation: [],
   uploadedFile: null,        // PDF/이미지용 (base64)
   uploadedFileName: null,
-  showSettings: false
+  showSettings: false,
+  // v19: 취소 기능
+  isCancelled: false,
+  abortController: null
 };
+
+// === v19: 취소 관련 헬퍼 함수 ===
+export function resetCancellation() {
+  state.isCancelled = false;
+  state.abortController = null;
+}
+
+export function requestCancellation() {
+  state.isCancelled = true;
+  if (state.abortController) {
+    state.abortController.abort();
+  }
+}
+
+export function shouldCancel() {
+  return state.isCancelled;
+}
+
+export function createAbortController() {
+  state.abortController = new AbortController();
+  return state.abortController.signal;
+}
 
 // === (하위 호환) 유형별 문제 수 상태 ===
 export let typeConfig = { ...DEFAULT_TYPE_CONFIG };

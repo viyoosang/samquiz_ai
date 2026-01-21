@@ -123,6 +123,9 @@ export const STYLES = `
     background: #fef3c7;
     color: #92400e;
     border: 1px solid #fcd34d;
+    font-size: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
   }
   .sqai-msg-info {
     background: #dbeafe;
@@ -147,6 +150,8 @@ export const STYLES = `
     align-items: center;
     gap: 0.5rem;
     border: 1px solid #fcd34d;
+    margin-bottom: 0.5rem;
+    margin-right: 2rem;
   }
 
   .sqai-input-area {
@@ -683,7 +688,7 @@ export const STYLES = `
     gap: 0.5rem;
   }
   .sqai-btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-  .sqai-btn-primary:focus { outline: 2px solid #5676ff; outline-offset: 2px; }
+  .sqai-btn-primary:focus-visible { outline: 2px solid #5676ff; outline-offset: 2px; }
   .sqai-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
   /* v13: 버튼 영역 (상태별 전환) */
@@ -734,30 +739,30 @@ export const STYLES = `
 
   .sqai-preview-item {
     background: white;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    border-left: 4px solid #5676ff;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.375rem;
+    border: 1px solid #e5e7eb;
   }
-  .sqai-preview-title { font-weight: 600; color: #5676ff; margin-bottom: 0.375rem; font-size: 0.875rem; }
+  .sqai-preview-title { font-weight: 500; color: #334155; margin-bottom: 0.25rem; font-size: 0.75rem; line-height: 1.4; }
   .sqai-preview-option {
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
     color: #64748b;
-    margin-left: 0.5rem;
+    margin-left: 0.375rem;
     display: flex;
     align-items: start;
-    gap: 0.375rem;
-    line-height: 1.5;
+    gap: 0.25rem;
+    line-height: 1.4;
   }
   .sqai-preview-option.correct { color: #16a34a; font-weight: 500; }
   .sqai-preview-type {
-    background: #e0e7ff;
-    color: #5676ff;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    margin-right: 0.375rem;
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.1875rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    margin-right: 0.25rem;
   }
 
   /* v13: 문항별 액션 버튼 */
@@ -814,7 +819,8 @@ export const STYLES = `
   /* v13: 제외된 문항 스타일 */
   .sqai-preview-item.excluded {
     opacity: 0.5;
-    border-left-color: #94a3b8;
+    border-color: #d1d5db;
+    background: #f9fafb;
   }
   .sqai-preview-item.excluded .sqai-preview-title {
     text-decoration: line-through;
@@ -1362,6 +1368,42 @@ export const STYLES = `
     font-size: 0.75rem;
     color: #94a3b8;
     font-style: italic;
+  }
+
+  /* 생성 중 딤 오버레이 (챗봇 아래, 어드민 폼 위) */
+  .sqai-generating-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .sqai-generating-overlay.active { display: flex; }
+  .sqai-generating-box {
+    background: white;
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    color: #334155;
+  }
+  .sqai-generating-box .sqai-spinner {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* v19: 중단 버튼 스타일 (생성/적용 버튼이 중단 버튼으로 변할 때 사용) */
+  .sqai-stop-btn {
+    background: #64748b !important;
+    opacity: 1 !important;
+  }
+  .sqai-stop-btn:hover {
+    background: #475569 !important;
   }
 `;
 

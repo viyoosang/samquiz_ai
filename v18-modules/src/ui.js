@@ -27,7 +27,11 @@ import {
   applyConfig,
   saveLastUsedConfig,
   getApiKey,
-  saveApiKey
+  saveApiKey,
+  // v19: 취소 기능
+  resetCancellation,
+  requestCancellation,
+  shouldCancel
 } from './state.js';
 import {
   getChatbotHTML,
@@ -71,6 +75,31 @@ let crosswordData = {
   wordCount: 5
 };
 
+// === v19: 버튼 아이콘 상수 ===
+const ICON_PLAY = `<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+const ICON_STOP = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`;
+const ICON_CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+// === v19: 버튼 상태 변환 헬퍼 ===
+function setButtonToStopMode(button, stopLabel = '중단') {
+  const svg = button.querySelector('svg');
+  const span = button.querySelector('span');
+  if (svg) svg.outerHTML = ICON_STOP;
+  if (span) span.textContent = stopLabel;
+  button.classList.add('sqai-stop-btn');
+  button.disabled = false;
+}
+
+function restoreButtonToNormal(button, label, iconType = 'play') {
+  const svg = button.querySelector('svg');
+  const span = button.querySelector('span');
+  const icon = iconType === 'check' ? ICON_CHECK : ICON_PLAY;
+  if (svg) svg.outerHTML = icon;
+  if (span) span.textContent = label;
+  button.classList.remove('sqai-stop-btn');
+  button.disabled = false;
+}
+
 // === v15: 폼 타입 감지 ===
 function detectFormType() {
   const activeTab = document.querySelector('.nav-link.active');
@@ -90,6 +119,16 @@ export function createChatbotUI() {
   currentFormType = detectFormType();
 
   document.body.insertAdjacentHTML('beforeend', getChatbotHTML());
+
+  // 폼 입력 중 딤 오버레이 추가 (챗봇 아래, 어드민 폼 위)
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="sqai-generating-overlay" class="sqai-generating-overlay">
+      <div class="sqai-generating-box">
+        <div class="sqai-spinner"></div>
+        <span id="sqai-overlay-message">폼에 입력 중...</span>
+      </div>
+    </div>
+  `);
 
   // v15/v16: 폼 타입에 따라 UI 수정
   if (currentFormType === FORM_TYPES.letterReorder) {
@@ -249,6 +288,7 @@ function setupEventListeners() {
 
   // v10: 파일 드래그앤드롭
   setupFileDragAndDrop();
+
 
   // 설정 패널
   document.getElementById('settings-chatbot').addEventListener('click', toggleSettings);
@@ -1227,6 +1267,29 @@ export function addMessage(content, isUser = false, isHtml = false, type = null)
   return div;
 }
 
+// === 생성 중 딤 오버레이 ===
+export function showGeneratingOverlay(message = '폼에 입력 중...') {
+  const overlay = document.getElementById('sqai-generating-overlay');
+  const messageEl = document.getElementById('sqai-overlay-message');
+  const cancelBtn = document.getElementById('sqai-cancel-btn');
+
+  if (messageEl) messageEl.textContent = message;
+
+  // v19: 취소 버튼 상태 초기화
+  if (cancelBtn) {
+    cancelBtn.disabled = false;
+    const btnText = cancelBtn.querySelector('span');
+    if (btnText) btnText.textContent = '취소';
+  }
+
+  if (overlay) overlay.classList.add('active');
+}
+
+export function hideGeneratingOverlay() {
+  const overlay = document.getElementById('sqai-generating-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
 function showLoading(message = '문제 생성 중...') {
   return addMessage(getLoadingHTML(message), false, true);
 }
@@ -1268,7 +1331,7 @@ function updateApplyButtonState() {
 
 // === v13: 전체 다시 생성 ===
 async function handleRegenerateAll() {
-  if (state.isGenerating || !state.currentTopic) return;
+  if (state.isGenerating || state.isApplying || !state.currentTopic) return;
 
   // v17: 현재 입력값이 있으면 그대로 사용, 없으면 파일 미첨부시에만 이전 topic 복원
   const currentInput = document.getElementById('topic-input').value.trim();
@@ -1363,7 +1426,7 @@ function updateQuestionPreviewItem(index) {
   if (!previewItem) return;
 
   const qType = q._type || type;
-  const typeLabel = type === 'mixed' ? `<span class="sqai-preview-type">[${TYPE_NAMES[qType]}]</span> ` : '';
+  const typeLabel = type === 'mixed' ? `<span class="sqai-preview-type">${TYPE_NAMES[qType]}</span> ` : '';
 
   let contentHTML = `
     <div class="sqai-preview-item-header">
@@ -1388,13 +1451,12 @@ function updateQuestionPreviewItem(index) {
     q.options.forEach((opt, idx) => {
       const isCorrect = idx === q.answer;
       contentHTML += `<div class="sqai-preview-option ${isCorrect ? 'correct' : ''}">
-        ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
         <span>${idx + 1}) ${escapeHtml(opt)}</span>
+        ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
       </div>`;
     });
   } else if (qType === 'ox' || qType === 'short' || qType === 'initial') {
     contentHTML += `<div class="sqai-preview-option correct">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       <span>정답: ${escapeHtml(String(q.answer))}</span>
     </div>`;
     if (q.similarAnswers && q.similarAnswers.length > 0) {
@@ -1428,7 +1490,15 @@ function updateQuestionPreviewItem(index) {
 
 // === v15/v16: 문제 생성 (폼 타입에 따라 분기) ===
 async function handleGenerate() {
-  if (state.isGenerating) return;
+  // v19: 생성 중일 때 클릭하면 중단
+  if (state.isGenerating) {
+    requestCancellation();
+    return;
+  }
+  if (state.isApplying) return;
+
+  // v19: 취소 상태 초기화
+  resetCancellation();
 
   // v15: 폼 타입에 따라 분기
   if (currentFormType === FORM_TYPES.letterReorder) {
@@ -1461,10 +1531,8 @@ async function handleGenerate() {
 
   state.isGenerating = true;
   const button = document.getElementById('generate-button');
-  const buttonSpan = button.querySelector('span');
-  button.disabled = true;
-  button.style.opacity = '0.6';
-  if (buttonSpan) buttonSpan.textContent = '생성 중...';
+  // v19: 버튼을 "중단" 버튼으로 변경 (클릭 가능)
+  setButtonToStopMode(button, '중단');
 
   // 생성 요청 메시지 (유형별 개수 표시)
   const totalCount = sequence.length;
@@ -1475,8 +1543,11 @@ async function handleGenerate() {
   const typeSummary = Object.entries(typeCounts)
     .map(([type, count]) => `${TYPE_NAMES[type]} ${count}개`)
     .join(' + ');
-  const fileInfo = state.uploadedFile ? ` (${state.uploadedFileName} 분석)` : '';
-  addMessage(`${LEVEL_NAMES[level]} ${typeSummary} = 총 ${totalCount}개 생성${fileInfo}`, true);
+  const extraInfo = [];
+  if (topic) extraInfo.push(`주제: ${topic}`);
+  if (state.uploadedFile) extraInfo.push(`${state.uploadedFileName} 분석`);
+  const infoStr = extraInfo.length > 0 ? ` (${extraInfo.join(', ')})` : '';
+  addMessage(`${LEVEL_NAMES[level]} ${typeSummary} = 총 ${totalCount}개 생성${infoStr}`, true);
 
   const loadingMsg = showLoading('전체 문제 생성 중...');
 
@@ -1517,13 +1588,16 @@ async function handleGenerate() {
 
   } catch (error) {
     loadingMsg.remove();
-    addMessage(`오류: ${error.message}`, false, false, 'error');
+    // v19: 취소 처리
+    if (error.message === 'CANCELLED' || shouldCancel()) {
+      addMessage('문제 생성이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage(`오류: ${error.message}`, false, false, 'error');
+    }
     console.error('Generation error:', error);
   } finally {
     state.isGenerating = false;
-    button.disabled = false;
-    button.style.opacity = '1';
-    if (buttonSpan) buttonSpan.textContent = '문제 생성하기';
+    restoreButtonToNormal(button, '문제 생성하기', 'play');
   }
 }
 
@@ -1541,10 +1615,8 @@ async function handleLetterReorderGenerate() {
 
   state.isGenerating = true;
   const button = document.getElementById('generate-button');
-  const buttonSpan = button.querySelector('span');
-  button.disabled = true;
-  button.style.opacity = '0.6';
-  if (buttonSpan) buttonSpan.textContent = '생성 중...';
+  // v19: 버튼을 "중단" 버튼으로 변경 (클릭 가능)
+  setButtonToStopMode(button, '중단');
 
   const fileInfo = state.uploadedFile ? ` (${state.uploadedFileName} 분석)` : '';
   addMessage(`${LEVEL_NAMES[level]} 단어 ${wordCount}개 생성${fileInfo}`, true);
@@ -1574,13 +1646,16 @@ async function handleLetterReorderGenerate() {
 
   } catch (error) {
     loadingMsg.remove();
-    addMessage(`오류: ${error.message}`, false, false, 'error');
+    // v19: 취소 처리
+    if (error.message === 'CANCELLED' || shouldCancel()) {
+      addMessage('단어 생성이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage(`오류: ${error.message}`, false, false, 'error');
+    }
     console.error('Letter reorder generation error:', error);
   } finally {
     state.isGenerating = false;
-    button.disabled = false;
-    button.style.opacity = '1';
-    if (buttonSpan) buttonSpan.textContent = '단어 생성하기';
+    restoreButtonToNormal(button, '단어 생성하기', 'play');
   }
 }
 
@@ -1672,6 +1747,12 @@ function updateLetterReorderPreviewItem(index) {
 
 // === v15: 글자순서바꾸기 폼에 적용 ===
 async function applyLetterReorderWords() {
+  // v19: 적용 중일 때 클릭하면 중단
+  if (state.isApplying) {
+    requestCancellation();
+    return;
+  }
+
   // 제외되지 않은 단어만 필터링
   const activeWords = letterReorderData.words.filter(w => !w._excluded);
 
@@ -1680,23 +1761,44 @@ async function applyLetterReorderWords() {
     return;
   }
 
-  // 적용 버튼 비활성화
+  // v19: 취소 상태 초기화
+  resetCancellation();
+
+  // v19: 적용 버튼을 "중단" 버튼으로 변경 (클릭 가능)
   const applyBtn = document.getElementById('apply-btn');
   if (applyBtn) {
-    applyBtn.disabled = true;
-    const applySpan = applyBtn.querySelector('span');
-    if (applySpan) applySpan.textContent = '적용 중...';
-    applyBtn.style.opacity = '0.6';
+    setButtonToStopMode(applyBtn, '중단');
+  }
+
+  // 다시 생성 버튼도 비활성화
+  const regenBtn = document.getElementById('regenerate-all-btn');
+  if (regenBtn) {
+    regenBtn.disabled = true;
+    regenBtn.style.opacity = '0.6';
   }
 
   state.isApplying = true;
+  showGeneratingOverlay();
   addMessage(`${activeWords.length}개의 단어를 폼에 입력합니다...`, false, false, 'info');
   const loadingMsg = showLoading('폼에 입력 중...');
 
   try {
+    // v19: 취소 체크
+    if (shouldCancel()) {
+      loadingMsg.remove();
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+      return;
+    }
+
     await applyLetterReorderToForm(activeWords);
     loadingMsg.remove();
-    addMessage('모든 단어가 폼에 적용되었습니다!', false, false, 'success');
+
+    // v19: 취소 여부 체크
+    if (shouldCancel()) {
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage('모든 단어가 폼에 적용되었습니다!', false, false, 'success');
+    }
 
     // 초기 상태로 복귀
     letterReorderData.words = [];
@@ -1704,15 +1806,24 @@ async function applyLetterReorderWords() {
 
   } catch (error) {
     loadingMsg.remove();
-    addMessage(`폼 적용 중 오류: ${error.message}`, false, false, 'error');
+    // v19: 취소 처리
+    if (error.message === 'CANCELLED' || shouldCancel()) {
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage(`폼 적용 중 오류: ${error.message}`, false, false, 'error');
+    }
     console.error('Apply letterReorder error:', error);
   } finally {
     state.isApplying = false;
+    hideGeneratingOverlay();
+    // v19: 버튼 복원
     if (applyBtn) {
-      applyBtn.disabled = false;
-      const applySpan = applyBtn.querySelector('span');
-      if (applySpan) applySpan.textContent = '폼에 적용하기';
-      applyBtn.style.opacity = '1';
+      restoreButtonToNormal(applyBtn, '폼에 적용하기', 'check');
+    }
+    // 다시 생성 버튼 복원
+    if (regenBtn) {
+      regenBtn.disabled = false;
+      regenBtn.style.opacity = '1';
     }
   }
 }
@@ -1731,10 +1842,8 @@ async function handleCrosswordGenerate() {
 
   state.isGenerating = true;
   const button = document.getElementById('generate-button');
-  const buttonSpan = button.querySelector('span');
-  button.disabled = true;
-  button.style.opacity = '0.6';
-  if (buttonSpan) buttonSpan.textContent = '생성 중...';
+  // v19: 버튼을 "중단" 버튼으로 변경 (클릭 가능)
+  setButtonToStopMode(button, '중단');
 
   const fileInfo = state.uploadedFile ? ` (${state.uploadedFileName} 분석)` : '';
   addMessage(`${LEVEL_NAMES[level]} 단어 ${wordCount}개로 퍼즐 생성${fileInfo}`, true);
@@ -1765,13 +1874,16 @@ async function handleCrosswordGenerate() {
 
   } catch (error) {
     loadingMsg.remove();
-    addMessage(`오류: ${error.message}`, false, false, 'error');
+    // v19: 취소 처리
+    if (error.message === 'CANCELLED' || shouldCancel()) {
+      addMessage('퍼즐 생성이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage(`오류: ${error.message}`, false, false, 'error');
+    }
     console.error('Crossword generation error:', error);
   } finally {
     state.isGenerating = false;
-    button.disabled = false;
-    button.style.opacity = '1';
-    if (buttonSpan) buttonSpan.textContent = '퍼즐 생성하기';
+    restoreButtonToNormal(button, '퍼즐 생성하기', 'play');
   }
 }
 
@@ -1789,28 +1901,55 @@ function showCrosswordPreview(data) {
 
 // === v16: 가로세로퍼즐 폼에 적용 ===
 async function applyCrosswordWords() {
+  // v19: 적용 중일 때 클릭하면 중단
+  if (state.isApplying) {
+    requestCancellation();
+    return;
+  }
+
   if (crosswordData.placedWords.length === 0) {
     addMessage('적용할 퍼즐이 없습니다.', false, false, 'warning');
     return;
   }
 
-  // 적용 버튼 비활성화
+  // v19: 취소 상태 초기화
+  resetCancellation();
+
+  // v19: 적용 버튼을 "중단" 버튼으로 변경 (클릭 가능)
   const applyBtn = document.getElementById('apply-btn');
   if (applyBtn) {
-    applyBtn.disabled = true;
-    const applySpan = applyBtn.querySelector('span');
-    if (applySpan) applySpan.textContent = '적용 중...';
-    applyBtn.style.opacity = '0.6';
+    setButtonToStopMode(applyBtn, '중단');
+  }
+
+  // 다시 생성 버튼도 비활성화
+  const regenBtn = document.getElementById('regenerate-all-btn');
+  if (regenBtn) {
+    regenBtn.disabled = true;
+    regenBtn.style.opacity = '0.6';
   }
 
   state.isApplying = true;
+  showGeneratingOverlay();
   addMessage('퍼즐을 폼에 입력합니다...', false, false, 'info');
   const loadingMsg = showLoading('폼에 입력 중...');
 
   try {
+    // v19: 취소 체크
+    if (shouldCancel()) {
+      loadingMsg.remove();
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+      return;
+    }
+
     await applyCrosswordToForm(crosswordData);
     loadingMsg.remove();
-    addMessage('퍼즐이 폼에 적용되었습니다!', false, false, 'success');
+
+    // v19: 취소 여부 체크
+    if (shouldCancel()) {
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage('퍼즐이 폼에 적용되었습니다!', false, false, 'success');
+    }
 
     // 초기 상태로 복귀
     crosswordData = { grid: [], hints: { horizontal: [], vertical: [] }, placedWords: [], wordCount: 5 };
@@ -1818,15 +1957,24 @@ async function applyCrosswordWords() {
 
   } catch (error) {
     loadingMsg.remove();
-    addMessage(`폼 적용 중 오류: ${error.message}`, false, false, 'error');
+    // v19: 취소 처리
+    if (error.message === 'CANCELLED' || shouldCancel()) {
+      addMessage('폼 적용이 취소되었습니다.', false, false, 'warning');
+    } else {
+      addMessage(`폼 적용 중 오류: ${error.message}`, false, false, 'error');
+    }
     console.error('Apply crossword error:', error);
   } finally {
     state.isApplying = false;
+    hideGeneratingOverlay();
+    // v19: 버튼 복원
     if (applyBtn) {
-      applyBtn.disabled = false;
-      const applySpan = applyBtn.querySelector('span');
-      if (applySpan) applySpan.textContent = '폼에 적용하기';
-      applyBtn.style.opacity = '1';
+      restoreButtonToNormal(applyBtn, '폼에 적용하기', 'check');
+    }
+    // 다시 생성 버튼 복원
+    if (regenBtn) {
+      regenBtn.disabled = false;
+      regenBtn.style.opacity = '1';
     }
   }
 }
@@ -1854,7 +2002,7 @@ function showQuestionsPreview(questions, type) {
 
   questions.forEach((q, i) => {
     const qType = q._type || type;
-    const typeLabel = type === 'mixed' ? `<span class="sqai-preview-type">[${TYPE_NAMES[qType]}]</span> ` : '';
+    const typeLabel = type === 'mixed' ? `<span class="sqai-preview-type">${TYPE_NAMES[qType]}</span> ` : '';
 
     // v13: 액션 버튼이 있는 헤더 구조
     previewHTML += `<div class="sqai-preview-item" data-index="${i}">
@@ -1880,13 +2028,12 @@ function showQuestionsPreview(questions, type) {
       q.options.forEach((opt, idx) => {
         const isCorrect = idx === q.answer;
         previewHTML += `<div class="sqai-preview-option ${isCorrect ? 'correct' : ''}">
-          ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
           <span>${idx + 1}) ${escapeHtml(opt)}</span>
+          ${isCorrect ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
         </div>`;
       });
     } else if (qType === 'ox' || qType === 'short' || qType === 'initial') {
       previewHTML += `<div class="sqai-preview-option correct">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         <span>정답: ${escapeHtml(String(q.answer))}</span>
       </div>`;
       if (q.similarAnswers && q.similarAnswers.length > 0) {
@@ -1946,7 +2093,7 @@ function copyQuestionsToClipboard(questions, type) {
 
   questions.forEach((q, i) => {
     const qType = q._type || type;
-    const typeLabel = type === 'mixed' ? `[${TYPE_NAMES[qType]}] ` : '';
+    const typeLabel = type === 'mixed' ? `${TYPE_NAMES[qType]} ` : '';
     text += `${i + 1}. ${typeLabel}${q.question}\n`;
 
     if (qType === 'choice' && q.options) {
@@ -1992,7 +2139,15 @@ async function applyQuestionsToForm() {
     return;
   }
 
-  if (state.isApplying || !state.currentQuestions) return;
+  // v19: 적용 중일 때 클릭하면 중단
+  if (state.isApplying) {
+    requestCancellation();
+    return;
+  }
+  if (!state.currentQuestions) return;
+
+  // v19: 취소 상태 초기화
+  resetCancellation();
 
   const { questions, type } = state.currentQuestions;
 
@@ -2004,21 +2159,33 @@ async function applyQuestionsToForm() {
     return;
   }
 
-  // v13: 하단 적용 버튼 비활성화
+  // v19: 적용 버튼을 "중단" 버튼으로 변경 (클릭 가능)
   const applyBtn = document.getElementById('apply-btn');
   if (applyBtn) {
-    applyBtn.disabled = true;
-    const applySpan = applyBtn.querySelector('span');
-    if (applySpan) applySpan.textContent = '적용 중...';
-    applyBtn.style.opacity = '0.6';
+    setButtonToStopMode(applyBtn, '중단');
+  }
+
+  // 다시 생성 버튼도 비활성화
+  const regenBtn = document.getElementById('regenerate-all-btn');
+  if (regenBtn) {
+    regenBtn.disabled = true;
+    regenBtn.style.opacity = '0.6';
   }
 
   state.isApplying = true;
+  showGeneratingOverlay();
   addMessage(`${activeQuestions.length}개의 문제를 폼에 입력합니다...`, false, false, 'info');
   const loadingMsg = showLoading('폼에 입력 중...');
 
   try {
+    let cancelledAt = -1;
     for (let i = 0; i < activeQuestions.length; i++) {
+      // v19: 취소 체크
+      if (shouldCancel()) {
+        cancelledAt = i;
+        break;
+      }
+
       const q = activeQuestions[i];
       addMessage(`${i + 1}/${activeQuestions.length} 문제 입력 중...`, false, false);
 
@@ -2052,7 +2219,13 @@ async function applyQuestionsToForm() {
     }
 
     loadingMsg.remove();
-    addMessage('모든 문제가 폼에 적용되었습니다!', false, false, 'success');
+
+    // v19: 취소 여부에 따른 메시지
+    if (cancelledAt >= 0) {
+      addMessage(`${cancelledAt}/${activeQuestions.length} 문제까지 입력 후 취소되었습니다.`, false, false, 'warning');
+    } else {
+      addMessage('모든 문제가 폼에 적용되었습니다!', false, false, 'success');
+    }
 
     // v13: 적용 완료 후 초기 상태로 복귀
     state.currentQuestions = null;
@@ -2066,12 +2239,15 @@ async function applyQuestionsToForm() {
     console.error('Apply error:', error);
   } finally {
     state.isApplying = false;
-    // v13: 버튼 복원
+    hideGeneratingOverlay();
+    // v19: 버튼 복원
     if (applyBtn) {
-      applyBtn.disabled = false;
-      const applySpan = applyBtn.querySelector('span');
-      if (applySpan) applySpan.textContent = '폼에 적용하기';
-      applyBtn.style.opacity = '1';
+      restoreButtonToNormal(applyBtn, '폼에 적용하기', 'check');
+    }
+    // 다시 생성 버튼 복원
+    if (regenBtn) {
+      regenBtn.disabled = false;
+      regenBtn.style.opacity = '1';
     }
   }
 }

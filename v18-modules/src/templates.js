@@ -139,9 +139,8 @@ export function getChatbotHTML() {
             <!-- 생성 전 상태 -->
             <div id="generate-area" class="sqai-btn-area">
               <button id="generate-button" class="sqai-btn-primary">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polygon points="10 8 16 12 10 16 10 8"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                  <polygon points="6 4 20 12 6 20 6 4"/>
                 </svg>
                 <span>문제 생성하기</span>
               </button>
@@ -209,7 +208,7 @@ function getWelcomeMessageHTML() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
+        <circle cx="12" cy="17" r="1"/>
       </svg>
       <span>AI 생성 내용은 반드시 검토 후 사용하세요</span>
     </div>
@@ -432,8 +431,8 @@ function getSettingsPanelHTML() {
 export const MESSAGE_ICONS = {
   success: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`,
   error: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-  warning: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-  info: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+  warning: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1"/></svg>`,
+  info: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="1"/></svg>`
 };
 
 // === 로딩 메시지 HTML ===
@@ -500,9 +499,8 @@ export function getLetterReorderInputHTML() {
       <!-- 버튼 영역 -->
       <div id="generate-area" class="sqai-btn-area">
         <button id="generate-button" class="sqai-btn-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polygon points="10 8 16 12 10 16 10 8"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <polygon points="6 4 20 12 6 20 6 4"/>
           </svg>
           <span>단어 생성하기</span>
         </button>
@@ -541,7 +539,7 @@ export function getLetterReorderWelcomeHTML() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
+        <circle cx="12" cy="17" r="1"/>
       </svg>
       <span>AI 생성 내용은 반드시 검토 후 사용하세요</span>
     </div>
@@ -627,9 +625,8 @@ export function getCrosswordInputHTML() {
       <!-- 버튼 영역 -->
       <div id="generate-area" class="sqai-btn-area">
         <button id="generate-button" class="sqai-btn-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polygon points="10 8 16 12 10 16 10 8"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <polygon points="6 4 20 12 6 20 6 4"/>
           </svg>
           <span>퍼즐 생성하기</span>
         </button>
@@ -669,7 +666,7 @@ export function getCrosswordWelcomeHTML() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
+        <circle cx="12" cy="17" r="1"/>
       </svg>
       <span>AI 생성 내용은 반드시 검토 후 사용하세요</span>
     </div>
