@@ -32,7 +32,7 @@
  * 4. 화면 우측 하단에 챗봇 아이콘 클릭
  * 5. 설정(톱니바퀴) 클릭 후 API 키 입력
  *
- * 빌드 정보: 2026-01-21T09:57:32.740Z
+ * 빌드 정보: 2026-01-21T10:27:34.947Z
  */
 
 (function() {
@@ -2773,7 +2773,7 @@ async function callGeminiAPI(options) {
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 8192,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });
@@ -3445,8 +3445,8 @@ async function callGeminiAPIForLetterReorder(options) {
         temperature: 1.0,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });
@@ -3899,8 +3899,8 @@ async function callGeminiAPIForCrossword(options) {
         temperature: 1.0,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });

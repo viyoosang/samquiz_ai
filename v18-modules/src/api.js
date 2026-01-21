@@ -46,7 +46,7 @@ export async function callGeminiAPI(options) {
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 8192,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });
@@ -718,8 +718,8 @@ export async function callGeminiAPIForLetterReorder(options) {
         temperature: 1.0,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });
@@ -1172,8 +1172,8 @@ export async function callGeminiAPIForCrossword(options) {
         temperature: 1.0,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingLevel: "minimal" }
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingLevel: "medium" }
       }
     })
   });
