@@ -197,7 +197,7 @@ export function getSequenceItemHTML(item, index, total) {
 function getWelcomeMessageHTML() {
   return `
     <div class="sqai-msg sqai-msg-ai">
-      <strong>환영합니다! 샘퀴즈 AI v16</strong><br><br>
+      <strong>환영합니다! 샘퀴즈 AI</strong><br><br>
       <strong>사용 방법:</strong><br>
       1. 주제 입력 또는 📎 파일 첨부<br>
       2. 표현 수준 선택<br>

@@ -219,6 +219,78 @@ function buildSimilarAnswerRulesText() {
   return text;
 }
 
+// === v19: 교과 자동 감지 ===
+function detectSubject(topic) {
+  if (!topic) return null;
+  const t = topic.toLowerCase();
+
+  // 수학 키워드
+  const mathKeywords = [
+    '수학', 'math', '계산', '덧셈', '뺄셈', '곱셈', '나눗셈',
+    '분수', '소수', '정수', '자연수', '방정식', '함수', '그래프',
+    '도형', '삼각형', '사각형', '원', '넓이', '부피', '둘레',
+    '각도', '평행', '수직', '대칭', '비례', '비율', '백분율',
+    '통계', '확률', '평균', '중앙값', '최빈값', '인수분해',
+    '제곱', '제곱근', '루트', '지수', '로그', '미적분'
+  ];
+
+  // 영어 키워드
+  const englishKeywords = [
+    '영어', 'english', '단어', 'vocabulary', 'grammar', '문법',
+    '시제', 'tense', '동사', 'verb', '명사', 'noun', '형용사',
+    '부사', '전치사', '접속사', '관사', '대명사', '발음',
+    '회화', 'conversation', '독해', 'reading', '작문', 'writing',
+    '듣기', 'listening', '말하기', 'speaking', '어휘', '숙어',
+    '관용어', 'idiom', '구문', 'phrase', '문장'
+  ];
+
+  for (const kw of mathKeywords) {
+    if (t.includes(kw)) return 'math';
+  }
+  for (const kw of englishKeywords) {
+    if (t.includes(kw)) return 'english';
+  }
+  return null;
+}
+
+// === v19: 수학교과 전용 프롬프트 ===
+function buildMathSubjectPrompt() {
+  return `[수학교과 작성 원칙]
+- 수식 표기: 곱셈(×), 나눗셈(÷), 제곱(²), 루트(√), 분수(½) 등 표준 기호 사용
+- 계산 문제: 복잡한 암산보다 개념 이해 확인에 초점
+- 문장제: 불필요한 정보 최소화, 핵심 조건만 명시
+- 단위: 문제와 정답의 단위 일치 확인 (cm, m, kg 등)
+- 도형: 텍스트로 명확히 설명 가능한 범위 내 출제
+- 유사정답 예시:
+  · "1/2" → ["0.5", "2분의 1", "이분의 일", "½"]
+  · "3×4" → ["12", "3x4", "3*4"]
+  · "90도" → ["90°", "직각"]
+  · "10cm" → ["10센티미터", "10 cm"]`;
+}
+
+// === v19: 영어교과 전용 프롬프트 ===
+function buildEnglishSubjectPrompt(level) {
+  const sentenceGuide = level === 'elementary'
+    ? '초등: 영어 지문은 3~5문장, 단순한 문장 구조'
+    : '중등: 영어 지문은 5~8문장, 복문 구조 가능';
+
+  return `[영어교과 작성 원칙]
+- 어휘 문제:
+  · 단어의 뜻, 철자, 발음 관련 문제 출제 가능
+  · 동의어/반의어/유의어 구분 문제
+  · 예: "apple의 뜻으로 알맞은 것은?" → "사과"
+- 문법 문제:
+  · 시제, 인칭, 단복수 일치 확인
+  · 빈칸 채우기 형식 권장
+  · 예: "She ___ to school every day." → "goes"
+- 문장 길이 제한: ${sentenceGuide}
+- 유사정답:
+  · 대소문자 구분 안 함: "Apple" = "apple" = "APPLE"
+  · 관사 유무 허용: "a cat" = "cat"
+  · 축약형 허용: "I'm" = "I am", "don't" = "do not"
+  · 철자 변형: "color" = "colour" (미국/영국식)`;
+}
+
 // === 메인 프롬프트 생성 함수 ===
 export function generatePrompt(topic, count, quizType, level) {
   const s = settings;
@@ -234,6 +306,14 @@ export function generatePrompt(topic, count, quizType, level) {
 - 파일 내용 중 교육적으로 중요한 부분을 우선 출제
 - 문제나 해설에 페이지 번호, 출처, 파일명을 절대 인용하지 마세요
 - 파일 내용이 부족하면 해당 주제의 일반 지식으로 보완
+
+[용어 사용 원칙 - 최우선]
+- 퀴즈 발문, 보기, 정답에는 반드시 교과서 본문에 등장한 용어만 사용
+- 지도서 전용 용어 사용 금지:
+  · 교사용 지도팁, 수업 재구성팁에만 등장하는 용어
+  · 지도계획, 단원차시계획에만 등장하는 용어
+  · 교사 참고용 배경지식, 수업 도움말의 전문 용어
+- 학생이 교과서에서 직접 볼 수 있는 표현만 출제에 활용
 
 `;
   }
@@ -266,6 +346,15 @@ ${s.explanationPrinciples.structure.map(st => `- ${st}`).join('\n')}
     ? (topic && topic !== '첨부 파일 내용 기반' ? `\n추가 요청사항: ${topic}` : '')
     : `\n주제: ${topic}`;
 
+  // v19: 교과 자동 감지 및 교과별 프롬프트
+  const detectedSubject = detectSubject(topic);
+  let subjectPrompt = '';
+  if (detectedSubject === 'math') {
+    subjectPrompt = `\n${buildMathSubjectPrompt()}\n`;
+  } else if (detectedSubject === 'english') {
+    subjectPrompt = `\n${buildEnglishSubjectPrompt(level)}\n`;
+  }
+
   // 기본 프롬프트 조립
   const basePrompt = `[역할]
 ${s.general.role}
@@ -277,7 +366,7 @@ ${commonRulesText}
 ${difficultyText}
 
 ${buildLevelGuidelinesText(level)}
-
+${subjectPrompt}
 ${questionPrinciplesText}
 
 ${explanationPrinciplesText}
@@ -297,12 +386,21 @@ ${s.general.jsonInstruction}
 
   const prompts = {
     'ox': `${basePrompt}
+
+[OX형 문제 작성 원칙]
+- 발문은 반드시 평서문 종결형으로 작성: "~이다.", "~한다.", "~였다.", "~된다."
+- 의문형 사용 금지: "~인가?", "~할까?", "~일까?" 형태는 절대 사용하지 않음
+- 한 문장에 하나의 사실만 포함 (복합 진술 금지)
+- 예시:
+  - (O) "광합성은 엽록체에서 일어난다." → 정답 O
+  - (X) "광합성은 엽록체에서 일어나는가?" → 의문형 금지
+
 JSON 형식:
 \`\`\`json
 {
   "questions": [
     {
-      "question": "문제 내용 (최대 100자)",
+      "question": "평서문 종결형 문제 (~이다, ~한다 등)",
       "answer": "O 또는 X",
       "explanation": "정답 근거 + 오답 포인트 (최대 ${s.lengthLimits.explanation.value}자)"
     }
@@ -478,6 +576,14 @@ export function generateMixedPrompt(topic, sequence, level) {
 - 문제나 해설에 페이지 번호, 출처, 파일명을 절대 인용하지 마세요
 - 파일 내용이 부족하면 해당 주제의 일반 지식으로 보완
 
+[용어 사용 원칙 - 최우선]
+- 퀴즈 발문, 보기, 정답에는 반드시 교과서 본문에 등장한 용어만 사용
+- 지도서 전용 용어 사용 금지:
+  · 교사용 지도팁, 수업 재구성팁에만 등장하는 용어
+  · 지도계획, 단원차시계획에만 등장하는 용어
+  · 교사 참고용 배경지식, 수업 도움말의 전문 용어
+- 학생이 교과서에서 직접 볼 수 있는 표현만 출제에 활용
+
 `;
   }
 
@@ -516,9 +622,12 @@ ${s.explanationPrinciples.structure.map(st => `- ${st}`).join('\n')}
 
   if (typeCounts.ox) {
     typeFormats.push(`[OX형 형식]
+- 발문은 반드시 평서문 종결형: "~이다.", "~한다.", "~였다.", "~된다."
+- 의문형 금지: "~인가?", "~할까?" 등 사용하지 않음
+- 예: "임진왜란은 1592년에 일어났다." (O) / "임진왜란은 언제 일어났는가?" (X)
 {
   "_type": "ox",
-  "question": "문제 내용 (최대 100자)",
+  "question": "평서문 종결형 문제 (~이다, ~한다 등)",
   "answer": "O 또는 X",
   "explanation": "해설 (최대 ${s.lengthLimits.explanation.value}자)"
 }`);
@@ -605,6 +714,15 @@ ${buildSimilarAnswerRulesText()}
     ? (topic && topic !== '첨부 파일 내용 기반' ? `\n추가 요청사항: ${topic}` : '')
     : `\n주제: ${topic}`;
 
+  // v19: 교과 자동 감지 및 교과별 프롬프트
+  const detectedSubject = detectSubject(topic);
+  let subjectPrompt = '';
+  if (detectedSubject === 'math') {
+    subjectPrompt = `\n${buildMathSubjectPrompt()}\n`;
+  } else if (detectedSubject === 'english') {
+    subjectPrompt = `\n${buildEnglishSubjectPrompt(level)}\n`;
+  }
+
   return `[역할]
 ${s.general.role}
 
@@ -618,7 +736,7 @@ ${commonRulesText}
 ${difficultyText}
 
 ${buildLevelGuidelinesText(level)}
-
+${subjectPrompt}
 ${questionPrinciplesText}
 
 ${explanationPrinciplesText}
@@ -657,6 +775,11 @@ export function generateLetterReorderPrompt(topic, count, level) {
 위에 첨부된 파일의 내용을 분석하여 단어를 추출하세요.
 - 파일에서 핵심 개념, 용어를 추출하여 단어로 활용
 - 파일 내용 중 교육적으로 중요한 부분을 우선 활용
+
+[용어 사용 원칙 - 최우선]
+- 반드시 교과서 본문에 등장한 용어만 사용
+- 지도서 전용 용어 사용 금지 (지도팁, 수업 재구성팁, 지도계획 등의 전문 용어)
+- 학생이 교과서에서 직접 볼 수 있는 표현만 활용
 
 `;
   }
@@ -796,10 +919,17 @@ export function generateCrosswordPrompt(topic, count, level) {
   const s = settings;
   const levelName = level === 'elementary' ? '초등학생' : '중학생';
 
-  // 파일 컨텍스트
+  // 파일 컨텍스트 - v19: 파일 내 단어로 제한
   let fileContext = '';
   if (state.uploadedFile) {
-    fileContext = `[첨부 파일 분석 지침]
+    fileContext = `[단어 선정 원칙 - 최우선!]
+- 반드시 첨부 파일(교과서/지도서) 본문에 등장하는 단어만 사용
+- 퍼즐 구조(교차)를 위한 임의 단어 추가 절대 금지
+- 교차가 불가능하면 교차 없이 독립 배치 (단어 순수성이 퍼즐 구조보다 우선)
+- 지도서 전용 용어 사용 금지 (지도팁, 수업 재구성팁의 전문 용어)
+- 학생이 교과서에서 직접 볼 수 있는 표현만 활용
+
+[첨부 파일 분석 지침]
 위에 첨부된 파일의 내용을 분석하여 단어를 추출하세요.
 - 파일에서 핵심 개념, 용어를 추출하여 단어로 활용
 - 파일 내용 중 교육적으로 중요한 부분을 우선 활용
@@ -815,6 +945,16 @@ export function generateCrosswordPrompt(topic, count, level) {
     ? (topic && topic !== '첨부 파일 내용 기반' ? `추가 요청사항: ${topic}\n` : '')
     : `주제: ${topic}\n`;
 
+  // v19: 파일 첨부 여부에 따른 교차 규칙 분기
+  const crossingRule = state.uploadedFile
+    ? `[교차 규칙 - 파일 첨부 시]
+교차는 가능하면 시도하되, 첨부 파일 내 단어로 교차가 불가능하면 독립 배치를 허용합니다.
+- 단어의 교과 연관성 > 퍼즐 구조 미학
+- 주제와 무관한 일반 단어("합격", "성장" 등)를 교차용으로 추가하지 마세요`
+    : `[교차 규칙]
+가로세로퍼즐은 단어들이 서로 교차하면 좋습니다.
+가능하면 단어들이 공통 글자(음절)를 공유하도록 생성하세요.`;
+
   return `[역할]
 ${s.general.role}
 
@@ -822,21 +962,11 @@ ${fileContext}${topicLine}학교급: ${levelName}
 
 "가로세로퍼즐" 퀴즈용 단어 ${requestCount}개를 생성하세요.
 
-[핵심 규칙 - 매우 중요!]
-가로세로퍼즐은 단어들이 서로 교차해야 합니다.
-반드시 단어들이 공통 글자(음절)를 공유하도록 생성하세요!
+${crossingRule}
 
-[공통 글자 예시]
-주제가 "광합성"일 경우:
-- "광합성" + "합격" → "합" 공유
-- "광합성" + "성장" → "성" 공유
-- "산소" + "소화" → "소" 공유
-- "이산화탄소" + "산소" + "산책" → "산" 공유
-
-[단어 생성 전략]
-1. 첫 번째 단어(가로)를 정한 후, 그 단어의 글자를 포함하는 단어들을 세로로 배치
-2. 세로 단어의 글자를 공유하는 가로 단어를 추가
-3. 모든 단어가 최소 1개 이상의 다른 단어와 글자를 공유하도록 설계
+[공통 글자 예시 - 교차가 가능한 경우]
+- "광합성" + "엽록체" → 공통 글자 없음, 교차 불가 → 독립 배치 OK
+- "광합성" + "합성어" → "합성" 공유 가능 → 교차 가능
 
 [기본 규칙]
 - 각 단어는 2~${CROSSWORD_CONFIG.maxWordLength}글자의 한글 단어
@@ -848,7 +978,7 @@ ${fileContext}${topicLine}학교급: ${levelName}
 [금칙]
 - 힌트에 정답 단어를 포함하지 않기
 - 특수문자, 영어, 숫자가 포함된 단어 금지
-- 공통 글자가 없는 단어 금지 (다른 단어와 교차 불가)
+- 파일 첨부 시: 파일에 없는 단어 사용 금지 (교차를 위한 억지 단어 금지)
 
 [출력 규칙]
 ${s.general.jsonInstruction}
@@ -858,9 +988,9 @@ JSON 형식:
 {
   "words": [
     { "word": "광합성", "hint": "식물이 빛으로 양분을 만드는 과정", "direction": "horizontal" },
-    { "word": "합격", "hint": "시험에 통과하는 것", "direction": "vertical" },
-    { "word": "성장", "hint": "자라서 커지는 것", "direction": "horizontal" },
-    { "word": "장난감", "hint": "어린이가 가지고 노는 물건", "direction": "vertical" }
+    { "word": "엽록체", "hint": "광합성이 일어나는 세포 소기관", "direction": "vertical" },
+    { "word": "산소", "hint": "광합성 결과 나오는 기체", "direction": "horizontal" },
+    { "word": "포도당", "hint": "광합성으로 만들어지는 양분", "direction": "vertical" }
   ]
 }
 \`\`\``;
